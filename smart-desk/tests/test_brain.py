@@ -7,7 +7,7 @@ from desk import DeskBrain  # noqa: E402
 
 
 def brain(**kw):
-    return DeskBrain(owner="me", arrive_frames=3, lock_after=10, relaunch_after=600,
+    return DeskBrain(owners=frozenset({"me", "wife"}), arrive_frames=3, lock_after=10, relaunch_after=600,
                      stranger_frames=2, stranger_cooldown=60, **kw)
 
 
@@ -59,6 +59,22 @@ def test_shoulder_surfer_only_when_enabled():
         run(b, [(0, ["me"]), (1, ["me"]), (2, ["me"])])
         ev = run(b, [(3, ["me", None]), (4, ["me", None])])
         assert [c for _, c in ev] == expected
+
+
+def test_second_owner_also_unlocks_session():
+    b = brain()
+    ev = run(b, [(0, ["wife"]), (1, ["wife"]), (2, ["wife"])])
+    assert [c for _, c in ev] == ["arrived", "launch"]
+    # biri gedir, digəri oturur — kilid olmamalıdır
+    assert run(b, [(5, ["me"]), (20, ["me"]), (40, ["me"])]) == []
+    ev = run(b, [(55, [])])
+    assert [c for _, c in ev] == ["left", "lock"]
+
+
+def test_owner_list_from_config():
+    from desk import parse_owners
+    assert parse_owners({"owner": "ruslan"}) == {"ruslan"}
+    assert parse_owners({"owner": ["ruslan", "aysel"]}) == {"ruslan", "aysel"}
 
 
 if __name__ == "__main__":

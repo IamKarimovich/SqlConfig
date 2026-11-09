@@ -1,6 +1,7 @@
 """OS səviyyəli əməliyyatlar: ekranı kilidləmək, proqramları açmaq, Telegram."""
 from __future__ import annotations
 
+import json
 import os
 import platform
 import shutil
@@ -56,14 +57,47 @@ def find_app(entry: dict) -> str | None:
     return None
 
 
+_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+_start_menu_cache: dict[str, str | None] = {}
+
+
+def find_start_menu_app(name: str) -> str | None:
+    """Windows Start menyusunda proqramın AppID-sini tapır (Get-StartApps).
+
+    Microsoft Store / MSIX ilə quraşdırılan proqramlar (məs. Claude Desktop)
+    C:\\Program Files\\WindowsApps içində olur və exe yolu ilə açıla bilmir —
+    amma Start menyusundakı AppID ilə açılır.
+    """
+    if SYSTEM != "Windows":
+        return None
+    if name in _start_menu_cache:
+        return _start_menu_cache[name]
+    ps = ("Get-StartApps | Where-Object { $_.Name -like '*" + name.replace("'", "''") + "*' } "
+          "| Select-Object Name, AppID | ConvertTo-Json -Compress")
+    app_id = None
+    try:
+        out = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
+                             capture_output=True, text=True, timeout=30,
+                             creationflags=_NO_WINDOW).stdout.strip()
+        if out:
+            apps = json.loads(out)
+            apps = [apps] if isinstance(apps, dict) else apps
+            # Dəqiq ad uyğunluğu üstündür ("Claude" > "Claude Code ...")
+            apps.sort(key=lambda a: (a["Name"].lower() != name.lower(), len(a["Name"])))
+            app_id = apps[0]["AppID"] if apps else None
+    except Exception as e:  # noqa: BLE001
+        print(f"[launch] Start menyusu oxunmadı: {e}")
+    _start_menu_cache[name] = app_id
+    return app_id
+
+
 def is_running(exe_path: str) -> bool:
     """Proqram artıq açıqdırsa ikinci pəncərə açmayaq (Windows: tasklist, digərləri: pgrep)."""
     name = os.path.basename(exe_path)
     try:
         if SYSTEM == "Windows":
             out = subprocess.run(["tasklist", "/FI", f"IMAGENAME eq {name}", "/NH"],
-                                 capture_output=True, text=True,
-                                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout
+                                 capture_output=True, text=True, creationflags=_NO_WINDOW).stdout
             return name.lower() in out.lower()
         return subprocess.run(["pgrep", "-xi", os.path.splitext(name)[0]],
                               capture_output=True).returncode == 0
@@ -85,19 +119,28 @@ def launch_entry(entry) -> str:
 
     entry ola bilər:
       - sətir: shell əmri (məs. "code")
-      - {name, paths: [...], fallback: url}: ilk tapılan exe açılır,
-        heç biri yoxdursa fallback (məs. sayt) brauzerdə açılır.
+      - {name, paths: [...], start_menu: ad, process: x.exe, fallback: url}
+        Sıra: paths-dakı ilk mövcud exe → Windows Start menyusu → fallback link.
+        process: "artıq açıqdır?" yoxlaması üçün proses adı.
     """
     if isinstance(entry, str):
         subprocess.Popen(entry, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return f"əmr: {entry}"
     name = entry.get("name", "?")
+    skip = entry.get("skip_if_running", True)
+    proc = entry.get("process")
+    if skip and proc and is_running(proc):
+        return f"{name}: artıq açıqdır"
     exe = find_app(entry)
     if exe:
-        if entry.get("skip_if_running", True) and is_running(exe):
+        if skip and is_running(exe):
             return f"{name}: artıq açıqdır"
         _open_target(exe)
         return f"{name}: {exe}"
+    app_id = find_start_menu_app(entry["start_menu"]) if entry.get("start_menu") else None
+    if app_id:
+        subprocess.Popen(["explorer.exe", f"shell:AppsFolder\\{app_id}"])
+        return f"{name}: Start menyusundan ({app_id})"
     if entry.get("fallback"):
         webbrowser.open(entry["fallback"])
         return f"{name}: tapılmadı → {entry['fallback']}"
@@ -123,9 +166,12 @@ def check_apps(cfg: dict) -> None:
             print(f"  •  əmr: {entry}")
             continue
         exe = find_app(entry)
+        app_id = None if exe else (find_start_menu_app(entry["start_menu"]) if entry.get("start_menu") else None)
         if exe:
             state = "  (indi açıqdır)" if is_running(exe) else ""
             print(f"  ✅ {entry.get('name')}: {exe}{state}")
+        elif app_id:
+            print(f"  ✅ {entry.get('name')}: Start menyusunda tapıldı → {app_id}")
         elif entry.get("fallback"):
             print(f"  🌐 {entry.get('name')}: exe tapılmadı, əvəzinə {entry['fallback']} açılacaq")
         else:

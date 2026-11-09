@@ -39,12 +39,18 @@ Fərqli işıqda yenidən işə salıb nümunə əlavə etmək tanımanı yaxş�
 python enroll.py --name ruslan --append
 ```
 
-Ailə üzvlərini və ya iş yoldaşlarını da əlavə edə bilərsən (`--name aysel`). Onlar **"etibarlı"** sayılır: xəbərdarlıq göndərilmir, amma iş mühiti də onlar üçün açılmır.
+**İkinci sahib əlavə etmək** (məs. komputeri birlikdə istifadə etdiyin biri):
+```bash
+python enroll.py --name aysel
+```
+Sonra `config.yaml`-da `owner: [ruslan, aysel]` yaz. Sahiblərdən hər hansı biri oturanda proqramlar açılır. Hamısı masadan uzaqlaşanda ekran kilidlənir.
+
+Ad tanıdılıb, amma `owner` siyahısında deyilsə, həmin şəxs **"etibarlı"** sayılır: xəbərdarlıq göndərilmir, amma iş mühiti də açılmır.
 
 ### 2. `config.yaml`-ı düzəlt
 
-- `owner:` — enroll zamanı verdiyin ad
-- `on_arrival:` — öz OS-in üçün açılacaq proqramlar. Standart olaraq **Opera** və **Claude** açılır; kod onların quraşdırma yerini özü axtarır. Claude tətbiqi tapılmasa, əvəzinə claude.ai açılır. Proqram artıq açıqdırsa, təkrar açılmır.
+- `owner:` — enroll zamanı verdiyin ad, bir neçə nəfər üçün `[ruslan, aysel]`
+- `on_arrival:` — öz OS-in üçün açılacaq proqramlar. Standart olaraq **Opera** və **Claude** açılır; kod onların quraşdırma yerini özü axtarır. Microsoft Store/MSIX ilə quraşdırılan Claude Desktop Windows Start menyusundan tapılır. Heç cür tapılmasa, əvəzinə claude.ai açılır. Proqram artıq açıqdırsa, təkrar açılmır.
   Yoxlamaq üçün `python desk.py --check-apps` işlət. Burada ❌ görsən, proqramın `.exe` faylının yolunu `paths:` siyahısına əlavə et.
 - `lock_after_seconds`, `threshold` və s. — şərhlərdə izah olunub
 

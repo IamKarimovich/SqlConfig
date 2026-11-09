@@ -33,8 +33,9 @@ class DeskBrain:
 
     Vəziyyətlər: ABSENT (yoxsan) <-> PRESENT (masadasan).
     Qaytarılan əmrlər: "arrived", "launch", "left", "lock", "stranger".
+    Bir neçə sahib ola bilər: onlardan HƏR HANSI biri masadadırsa "masadasan" sayılır.
     """
-    owner: str
+    owners: frozenset[str]
     arrive_frames: int = 3
     lock_after: float = 12.0
     relaunch_after: float = 30 * 60
@@ -52,7 +53,7 @@ class DeskBrain:
     def step(self, now: float, names: list[str | None]) -> list[str]:
         """names: kadrdakı hər üz üçün tanınan ad, yad üçün None."""
         cmds: list[str] = []
-        owner_here = self.owner in names
+        owner_here = any(n in self.owners for n in names)
         stranger_here = None in names
 
         # --- sahib
@@ -86,10 +87,10 @@ class DeskBrain:
 COLORS = {"owner": (80, 220, 80), "trusted": (230, 170, 40), "stranger": (60, 60, 240)}
 
 
-def draw(frame, faces: list[Face], owner: str, brain: DeskBrain, fps: float):
+def draw(frame, faces: list[Face], owners: frozenset[str], brain: DeskBrain, fps: float):
     for f in faces:
         x, y, w, h = f.box
-        kind = "stranger" if f.name is None else ("owner" if f.name == owner else "trusted")
+        kind = "stranger" if f.name is None else ("owner" if f.name in owners else "trusted")
         c = COLORS[kind]
         label = f"{f.name or 'YAD'}  {f.similarity:.2f}"
         cv2.rectangle(frame, (x, y), (x + w, y + h), c, 2)
@@ -114,6 +115,16 @@ def draw(frame, faces: list[Face], owner: str, brain: DeskBrain, fps: float):
 
 
 # ====================================================================== əsas dövr
+def parse_owners(cfg: dict) -> frozenset[str]:
+    """owner: ruslan   və ya   owner: [ruslan, aysel]"""
+    raw = cfg.get("owners", cfg.get("owner"))
+    names = [raw] if isinstance(raw, str) else list(raw or [])
+    names = [str(n).strip() for n in names if str(n).strip()]
+    if not names:
+        raise SystemExit("config.yaml-da 'owner' göstərilməyib")
+    return frozenset(names)
+
+
 def load_config(path: Path) -> dict:
     if not path.exists():
         raise SystemExit(f"{path.name} yoxdur. Əvvəlcə: cp config.example.yaml config.yaml")
@@ -121,18 +132,20 @@ def load_config(path: Path) -> dict:
 
 
 def run(cfg: dict, preview: bool):
-    owner = cfg["owner"]
+    owners = parse_owners(cfg)
     rec, pres, intr = cfg.get("recognition", {}), cfg.get("presence", {}), cfg.get("intruder", {})
     tg_cfg = cfg.get("telegram", {}) or {}
 
     db = FaceDB(threshold=rec.get("threshold", 0.40))
-    if owner not in db.people:
-        raise SystemExit(f"'{owner}' tanınmır. Əvvəlcə: python enroll.py --name {owner}")
+    missing = [o for o in owners if o not in db.people]
+    if missing:
+        raise SystemExit(f"Tanınmayan sahib(lər): {', '.join(missing)}. "
+                         f"Əvvəlcə: python enroll.py --name {missing[0]}")
     engine = FaceEngine()
     tg = Telegram(tg_cfg.get("bot_token"), tg_cfg.get("chat_id"))
     log = EventLog()
     brain = DeskBrain(
-        owner=owner,
+        owners=owners,
         arrive_frames=pres.get("arrive_frames", 3),
         lock_after=pres.get("lock_after_seconds", 12),
         relaunch_after=pres.get("relaunch_after_minutes", 30) * 60,
@@ -143,7 +156,7 @@ def run(cfg: dict, preview: bool):
     min_px = rec.get("min_face_px", 70)
     period = 1.0 / max(1, cfg.get("fps", 5))
 
-    print(f"👀 Smart Desk işləyir. Tanınan şəxslər: {', '.join(db.people)}  |  sahib: {owner}")
+    print(f"👀 Smart Desk işləyir. Tanınan şəxslər: {', '.join(db.people)}  |  sahib(lər): {', '.join(sorted(owners))}")
     print(f"   Telegram: {'aktiv' if tg.enabled else 'söndürülüb'}   (Ctrl+C / q = çıxış)")
     log.log("start")
     cap = open_camera(cfg.get("camera", 0), wait_seconds=cfg.get("camera_wait_seconds", 120))
@@ -163,12 +176,12 @@ def run(cfg: dict, preview: bool):
 
             for cmd in brain.step(t0, [f.name for f in faces]):
                 if cmd == "arrived":
-                    log.log("arrived", owner)
+                    log.log("arrived", ", ".join(f.name for f in faces if f.name in owners))
                 elif cmd == "launch":
                     log.log("launched")
                     launch_workspace(cfg.get("on_arrival", {}) or {})
                 elif cmd == "left":
-                    log.log("left", owner)
+                    log.log("left")
                 elif cmd == "lock":
                     lock_screen()
                     log.log("locked", "sahib getdi")
@@ -182,7 +195,7 @@ def run(cfg: dict, preview: bool):
                 fps = 0.9 * fps + 0.1 * (1.0 / max(1e-3, now - t_prev))
                 t_prev = now
                 view = frame.copy()
-                draw(view, faces, owner, brain, fps)
+                draw(view, faces, owners, brain, fps)
                 cv2.imshow("Smart Desk", view)
                 if cv2.waitKey(1) & 0xFF in (ord("q"), 27):
                     break

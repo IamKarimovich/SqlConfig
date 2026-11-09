@@ -1,6 +1,9 @@
 # Smart Desk konfiqurasiyası.  Kopyala:  cp config.example.yaml config.yaml
 
-owner: ruslan            # enroll.py --name ilə verdiyin ad
+# Sahib(lər): enroll.py --name ilə verdiyin ad(lar).
+# Bir nəfər:  owner: ruslan      Bir neçə nəfər:  owner: [ruslan, aysel]
+# Sahiblərdən hər hansı biri oturanda proqramlar açılır və kilid işləmir.
+owner: [ruslan]
 camera: 0                # kamera nömrəsi (0 = daxili webcam)
 fps: 5                   # saniyədə neçə kadr analiz olunsun (CPU-ya qənaət)
 camera_wait_seconds: 120 # kompüter yeni açılanda kamera hazır olana qədər gözlə
@@ -17,7 +20,9 @@ presence:
 # Masaya oturanda açılacaqlar (yalnız öz OS-in üçün olan siyahı işləyir).
 # Hər element ya sadə əmrdir ("code"), ya da:
 #   name: ad, paths: yoxlanılacaq yollar (ilk tapılan açılır),
-#   fallback: heç biri tapılmasa brauzerdə açılacaq link
+#   start_menu: Windows Start menyusunda axtarılacaq ad (Store/MSIX proqramları üçün),
+#   process: "artıq açıqdır?" yoxlaması üçün proses adı,
+#   fallback: heç nə tapılmasa brauzerdə açılacaq link
 # Proqram artıq açıqdırsa ikinci dəfə açılmır.
 # Yoxlamaq üçün:  python desk.py --check-apps
 on_arrival:
@@ -33,6 +38,8 @@ on_arrival:
         - '%LOCALAPPDATA%\AnthropicClaude\claude.exe'
         - '%LOCALAPPDATA%\Programs\Claude\Claude.exe'
         - '%ProgramFiles%\Claude\Claude.exe'
+      start_menu: Claude        # yeni Claude Desktop MSIX kimi quraşdırılır → buradan tapılır
+      process: claude.exe
       fallback: https://claude.ai
   macos:
     - name: Opera
