@@ -9,8 +9,18 @@
 """
 from __future__ import annotations
 
-import argparse
 import sys
+
+# pythonw.exe (autostart) ilə işləyəndə konsol yoxdur → hər şeyi desk.log-a yaz.
+# Bunu ağır importlardan ƏVVƏL edirik ki, import xətaları da loga düşsün.
+if sys.stdout is None or sys.stderr is None:
+    from pathlib import Path as _P
+    _log = open(_P(__file__).resolve().parent / "desk.log", "a", encoding="utf-8", buffering=1)  # noqa: SIM115
+    sys.stdout = sys.stderr = _log
+    import datetime as _dt
+    print(f"\n===== autostart {_dt.datetime.now():%Y-%m-%d %H:%M:%S}  python={sys.executable}")
+
+import argparse
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -255,11 +265,6 @@ def main():
     ap.add_argument("--check-apps", action="store_true", help="açılacaq proqramlar tapılırmı?")
     args = ap.parse_args()
 
-    # pythonw.exe (autostart) ilə işləyəndə konsol yoxdur → hər şeyi desk.log-a yaz
-    if sys.stdout is None or sys.stderr is None:
-        logf = open(BASE_DIR / "desk.log", "a", encoding="utf-8", buffering=1)  # noqa: SIM115
-        sys.stdout = sys.stderr = logf
-
     if args.report:
         print(EventLog().report())
         return
@@ -273,4 +278,14 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit as e:
+        if isinstance(e.code, str):
+            print(f"[XƏTA] {e.code}")
+            raise SystemExit(1) from None
+        raise
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        raise
