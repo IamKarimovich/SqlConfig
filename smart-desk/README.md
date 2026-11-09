@@ -131,6 +131,7 @@ Fayllar:
 | `desk.py` | Əsas dövr, `DeskBrain` vəziyyət maşını, overlay, Telegram setup |
 | `actions.py` | Ekran kilidi (Win/mac/Linux), proqram açma, Telegram API |
 | `autostart.py` | Windows Startup-a əlavə et / sil |
+| `faces.py` | Üz bazası: siyahı, qarışmış nümunələri tapıb düzəltmək, adları dəyişmək, kamera testi |
 | `events.py` | SQLite jurnal və gündəlik hesabat |
 | `tests/` | Kamerasız vəziyyət maşını testləri (`python tests/test_brain.py`) |
 
@@ -138,6 +139,7 @@ Fayllar:
 
 | Problem | Həll |
 |---|---|
+| İki nəfərin üzü qarışıb | `python faces.py check --fix`, sonra `python faces.py whoami`; adlar tərsdirsə `python faces.py swap ruslan elena` |
 | Səni tanımır | Fərqli işıqda `enroll.py --append` işlət və ya `threshold`-u 0.36-ya endir |
 | Başqasını sən kimi tanıyır | `threshold`-u 0.45–0.50-yə qaldır |
 | Çox tez kilidlənir | `lock_after_seconds`-u artır |
