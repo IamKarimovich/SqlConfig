@@ -1,0 +1,7 @@
+config.yaml
+models/
+faces/
+snapshots/
+events.db
+__pycache__/
+.venv/

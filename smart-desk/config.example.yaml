@@ -1,0 +1,44 @@
+# Smart Desk konfiqurasiyası.  Kopyala:  cp config.example.yaml config.yaml
+
+owner: ruslan            # enroll.py --name ilə verdiyin ad
+camera: 0                # kamera nömrəsi (0 = daxili webcam)
+fps: 5                   # saniyədə neçə kadr analiz olunsun (CPU-ya qənaət)
+
+recognition:
+  threshold: 0.40        # SFace cosine oxşarlığı; yuxarı = daha sərt (0.36–0.50)
+  min_face_px: 70        # bundan kiçik (uzaqdakı) üzlərə məhəl qoyma
+
+presence:
+  arrive_frames: 3       # neçə ardıcıl kadrda tanınsan "gəldi" sayılır
+  lock_after_seconds: 12 # səni görmədikdən neçə saniyə sonra kilidlə
+  relaunch_after_minutes: 30  # bu qədər uzaq qalsan, qayıdanda iş mühiti yenidən açılır
+
+# Masaya oturanda açılacaqlar (yalnız öz OS-in üçün olan siyahı işləyir)
+on_arrival:
+  windows:
+    - code
+    - start "" "%LOCALAPPDATA%\slack\slack.exe"
+    - start spotify:playlist:37i9dQZF1DX5trt9i14X7j
+  macos:
+    - open -a "Visual Studio Code"
+    - open -a Slack
+    - open "spotify:playlist:37i9dQZF1DX5trt9i14X7j"
+  linux:
+    - code
+    - slack
+    - xdg-open "spotify:playlist:37i9dQZF1DX5trt9i14X7j"
+  urls: []               # məs. - https://github.com/notifications
+
+intruder:
+  confirm_frames: 4      # yad üz neçə ardıcıl kadrda görünsün
+  cooldown_seconds: 60   # iki xəbərdarlıq arası minimum fasilə
+  lock_screen: true      # yad şəxs oturanda ekranı dərhal kilidlə
+  alert_when_owner_present: false  # true = arxandan baxan "shoulder surfer"-i də xəbər ver
+  save_snapshots: true   # snapshots/ qovluğuna şəkil saxla
+
+telegram:
+  # Təhlükəsizlik üçün bunları env dəyişənlərində saxlamaq daha yaxşıdır:
+  #   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+  bot_token: ""
+  chat_id: ""
+  notify_on_lock: false  # hər kilidlənmədə qısa mesaj göndər
