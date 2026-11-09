@@ -6,6 +6,7 @@ işə salınmada avtomatik yüklənir (~40 MB).
 from __future__ import annotations
 
 import os
+import time
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -35,14 +36,21 @@ def _ensure_model(name: str, url: str) -> Path:
     return path
 
 
-def open_camera(index: int, width: int = 640, height: int = 480) -> cv2.VideoCapture:
-    # Windows-da DirectShow backend-i kameranı xeyli tez açır
-    cap = cv2.VideoCapture(index, cv2.CAP_DSHOW) if os.name == "nt" else cv2.VideoCapture(index)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-    if not cap.isOpened():
-        raise SystemExit(f"Kamera #{index} açılmadı (başqa proqram istifadə edir? icazə verilib?)")
-    return cap
+def open_camera(index: int, width: int = 640, height: int = 480,
+                wait_seconds: float = 0) -> cv2.VideoCapture:
+    """wait_seconds > 0: kamera hazır olana qədər gözlə (kompüter yeni açılanda lazımdır)."""
+    deadline = time.monotonic() + wait_seconds
+    while True:
+        # Windows-da DirectShow backend-i kameranı xeyli tez açır
+        cap = cv2.VideoCapture(index, cv2.CAP_DSHOW) if os.name == "nt" else cv2.VideoCapture(index)
+        if cap.isOpened():
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+            return cap
+        cap.release()
+        if time.monotonic() >= deadline:
+            raise SystemExit(f"Kamera #{index} açılmadı (başqa proqram istifadə edir? icazə verilib?)")
+        time.sleep(3)
 
 
 @dataclass

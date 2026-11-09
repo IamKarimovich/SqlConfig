@@ -4,10 +4,13 @@
   python desk.py --preview       # kamera pəncərəsi ilə (demo üçün əla)
   python desk.py --report        # bugünkü masa vaxtı hesabatı
   python desk.py --telegram-setup  # chat_id-ni tap + test mesajı göndər
+  python desk.py --check-apps      # Opera/Claude və s. tapılırmı?
+  python autostart.py install      # kompüter açılanda avtomatik başlasın
 """
 from __future__ import annotations
 
 import argparse
+import sys
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -16,7 +19,7 @@ from pathlib import Path
 import cv2
 import yaml
 
-from actions import Telegram, launch_workspace, lock_screen
+from actions import Telegram, check_apps, launch_workspace, lock_screen
 from events import EventLog
 from face_engine import BASE_DIR, Face, FaceDB, FaceEngine, open_camera
 
@@ -143,7 +146,7 @@ def run(cfg: dict, preview: bool):
     print(f"👀 Smart Desk işləyir. Tanınan şəxslər: {', '.join(db.people)}  |  sahib: {owner}")
     print(f"   Telegram: {'aktiv' if tg.enabled else 'söndürülüb'}   (Ctrl+C / q = çıxış)")
     log.log("start")
-    cap = open_camera(cfg.get("camera", 0))
+    cap = open_camera(cfg.get("camera", 0), wait_seconds=cfg.get("camera_wait_seconds", 120))
     fps, t_prev = 0.0, time.monotonic()
     try:
         while True:
@@ -236,13 +239,21 @@ def main():
     ap.add_argument("--preview", action="store_true", help="kamera pəncərəsini göstər")
     ap.add_argument("--report", action="store_true", help="bugünkü hesabat")
     ap.add_argument("--telegram-setup", action="store_true")
+    ap.add_argument("--check-apps", action="store_true", help="açılacaq proqramlar tapılırmı?")
     args = ap.parse_args()
+
+    # pythonw.exe (autostart) ilə işləyəndə konsol yoxdur → hər şeyi desk.log-a yaz
+    if sys.stdout is None or sys.stderr is None:
+        logf = open(BASE_DIR / "desk.log", "a", encoding="utf-8", buffering=1)  # noqa: SIM115
+        sys.stdout = sys.stderr = logf
 
     if args.report:
         print(EventLog().report())
         return
     cfg = load_config(args.config)
-    if args.telegram_setup:
+    if args.check_apps:
+        check_apps(cfg.get("on_arrival", {}) or {})
+    elif args.telegram_setup:
         telegram_setup(cfg)
     else:
         run(cfg, args.preview)

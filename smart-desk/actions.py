@@ -43,17 +43,95 @@ def lock_screen() -> bool:
 
 
 # ---------------------------------------------------------------- proqramlar
+def _expand(path: str) -> str:
+    return os.path.expandvars(os.path.expanduser(path))
+
+
+def find_app(entry: dict) -> str | None:
+    """{"paths": [...]} siyahısından mövcud olan ilk faylı qaytarır."""
+    for p in entry.get("paths") or []:
+        full = _expand(p)
+        if os.path.isfile(full):
+            return full
+    return None
+
+
+def is_running(exe_path: str) -> bool:
+    """Proqram artıq açıqdırsa ikinci pəncərə açmayaq (Windows: tasklist, digərləri: pgrep)."""
+    name = os.path.basename(exe_path)
+    try:
+        if SYSTEM == "Windows":
+            out = subprocess.run(["tasklist", "/FI", f"IMAGENAME eq {name}", "/NH"],
+                                 capture_output=True, text=True,
+                                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout
+            return name.lower() in out.lower()
+        return subprocess.run(["pgrep", "-xi", os.path.splitext(name)[0]],
+                              capture_output=True).returncode == 0
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _open_target(target: str) -> None:
+    if SYSTEM == "Windows":
+        os.startfile(target)  # noqa: S606 — exe/URL-i ayrıca prosesdə açır
+    elif SYSTEM == "Darwin":
+        subprocess.Popen(["open", target])
+    else:
+        subprocess.Popen(["xdg-open", target], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def launch_entry(entry) -> str:
+    """Bir elementi açır, nə etdiyini təsvir edən sətir qaytarır.
+
+    entry ola bilər:
+      - sətir: shell əmri (məs. "code")
+      - {name, paths: [...], fallback: url}: ilk tapılan exe açılır,
+        heç biri yoxdursa fallback (məs. sayt) brauzerdə açılır.
+    """
+    if isinstance(entry, str):
+        subprocess.Popen(entry, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return f"əmr: {entry}"
+    name = entry.get("name", "?")
+    exe = find_app(entry)
+    if exe:
+        if entry.get("skip_if_running", True) and is_running(exe):
+            return f"{name}: artıq açıqdır"
+        _open_target(exe)
+        return f"{name}: {exe}"
+    if entry.get("fallback"):
+        webbrowser.open(entry["fallback"])
+        return f"{name}: tapılmadı → {entry['fallback']}"
+    return f"{name}: TAPILMADI (config.yaml-da yolu düzəlt)"
+
+
 def launch_workspace(cfg: dict) -> None:
-    """config.yaml -> on_arrival: {windows|macos|linux: [əmrlər], urls: [...]}"""
-    for cmd in cfg.get(OS_KEY) or []:
-        print(f"[launch] {cmd}")
+    """config.yaml -> on_arrival: {windows|macos|linux: [...], urls: [...]}"""
+    for entry in cfg.get(OS_KEY) or []:
         try:
-            subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print(f"[launch] {launch_entry(entry)}")
         except Exception as e:  # noqa: BLE001
-            print(f"[launch] alınmadı: {e}")
+            print(f"[launch] alınmadı ({entry}): {e}")
     for url in cfg.get("urls") or []:
         print(f"[launch] {url}")
         webbrowser.open(url)
+
+
+def check_apps(cfg: dict) -> None:
+    """--check-apps: heç nə açmadan nəyin tapıldığını göstərir."""
+    for entry in cfg.get(OS_KEY) or []:
+        if isinstance(entry, str):
+            print(f"  •  əmr: {entry}")
+            continue
+        exe = find_app(entry)
+        if exe:
+            state = "  (indi açıqdır)" if is_running(exe) else ""
+            print(f"  ✅ {entry.get('name')}: {exe}{state}")
+        elif entry.get("fallback"):
+            print(f"  🌐 {entry.get('name')}: exe tapılmadı, əvəzinə {entry['fallback']} açılacaq")
+        else:
+            print(f"  ❌ {entry.get('name')}: tapılmadı. Yoxlanan yollar:")
+            for p in entry.get("paths") or []:
+                print(f"       {_expand(p)}")
 
 
 # ---------------------------------------------------------------- Telegram

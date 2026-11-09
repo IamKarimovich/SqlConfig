@@ -44,7 +44,8 @@ Ailə üzvlərini və ya iş yoldaşlarını da əlavə edə bilərsən (`--name
 ### 2. `config.yaml`-ı düzəlt
 
 - `owner:` — enroll zamanı verdiyin ad
-- `on_arrival:` — öz OS-in üçün açılacaq proqramlar
+- `on_arrival:` — öz OS-in üçün açılacaq proqramlar. Standart olaraq **Opera** və **Claude** açılır; kod onların quraşdırma yerini özü axtarır. Claude tətbiqi tapılmasa, əvəzinə claude.ai açılır. Proqram artıq açıqdırsa, təkrar açılmır.
+  Yoxlamaq üçün `python desk.py --check-apps` işlət. Burada ❌ görsən, proqramın `.exe` faylının yolunu `paths:` siyahısına əlavə et.
 - `lock_after_seconds`, `threshold` və s. — şərhlərdə izah olunub
 
 ### 3. Telegram botu (istəyə görə)
@@ -74,12 +75,13 @@ python desk.py --report     # bugünkü hesabat
 
 ## ⚙️ Kompüter açılanda avtomatik başlasın
 
-**Windows:** `Win+R` → `shell:startup` → bu məzmunla `smart-desk.bat` yarat:
-```bat
-@echo off
-cd /d C:\yol\smart-desk
-.venv\Scripts\pythonw.exe desk.py
+**Windows (bir əmr):**
+```powershell
+.venv\Scripts\activate
+python autostart.py install      # silmək: python autostart.py uninstall
 ```
+Bu əmr Startup qovluğuna `SmartDesk.vbs` faylı qoyur. Kompüter açılanda Smart Desk 20 saniyədən sonra **konsol pəncərəsi olmadan** başlayır. Loglar `desk.log` faylına yazılır.
+Diqqət: arxa fonda işləyən Smart Desk kameranı tutur. `--preview` ilə əl ilə işə salmaq istəsən, əvvəlcə onu dayandır: Task Manager → `pythonw.exe` → End task.
 
 **macOS:** *System Settings → General → Login Items*-ə skripti əlavə et. Kameraya və *Accessibility*-yə icazə ver (kilid üçün `System Events` istifadə olunur).
 
@@ -122,6 +124,7 @@ Fayllar:
 | `enroll.py` | Üz nümunələrini yığır (kamera və ya şəkil qovluğundan) |
 | `desk.py` | Əsas dövr, `DeskBrain` vəziyyət maşını, overlay, Telegram setup |
 | `actions.py` | Ekran kilidi (Win/mac/Linux), proqram açma, Telegram API |
+| `autostart.py` | Windows Startup-a əlavə et / sil |
 | `events.py` | SQLite jurnal və gündəlik hesabat |
 | `tests/` | Kamerasız vəziyyət maşını testləri (`python tests/test_brain.py`) |
 
