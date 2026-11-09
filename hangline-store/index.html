@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body style="margin:0">
+<title>Hangline Rail Store</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one long clothes rail across a pastel atelier wall; product sheet slides over it. */
+:root{
+  --wall-a:#efe9f6;      /* lilac wall */
+  --wall-b:#e4f3d8;      /* lime-mint wash */
+  --wall-c:#f6f4ef;
+  --ink:#17161c;
+  --ink-soft:#5d5a68;
+  --line:#d6d1de;
+  --paper:#ffffff;
+  --paper-2:#f4f2f7;
+  --accent:#2f6b3f;      /* fleece green */
+  --rod:#b9b6c2;
+  --display:"Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body:"Archivo", "Helvetica Neue", Arial, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --wall-a:#1d1a26;--wall-b:#17241a;--wall-c:#141318;--ink:#f1eff6;--ink-soft:#a7a3b3;--line:#34313d;
+  --paper:#1c1b22;--paper-2:#24222c;--accent:#8fd19e;--rod:#6c6877;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --wall-a:#1d1a26;--wall-b:#17241a;--wall-c:#141318;--ink:#f1eff6;--ink-soft:#a7a3b3;--line:#34313d;
+  --paper:#1c1b22;--paper-2:#24222c;--accent:#8fd19e;--rod:#6c6877;color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--wall-c);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:60;background:var(--paper)}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+.gutter{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* header */
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.hd{display:flex;align-items:center;gap:24px;height:60px;max-width:1440px;margin:0 auto}
+.logo{display:flex;align-items:center;gap:8px;font-family:var(--display);font-weight:800;font-stretch:118%;letter-spacing:.02em;font-size:18px}
+.logo svg{width:22px;height:22px}
+nav{display:flex;gap:22px;margin:0 auto;font-size:13px;font-weight:500}
+nav a{color:var(--ink);text-decoration:none;opacity:.75}
+nav a:hover,nav a[aria-current]{opacity:1}
+.tools{display:flex;align-items:center;gap:10px}
+.search{display:flex;align-items:center;gap:6px;background:var(--paper-2);border-radius:999px;padding:6px 12px;font-size:13px;color:var(--ink-soft);width:150px}
+.search input{border:0;background:none;outline:none;width:100%;color:var(--ink);font:inherit}
+.iconbtn{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;position:relative}
+.iconbtn:hover{background:var(--paper-2)}
+.iconbtn svg{width:19px;height:19px}
+.badge{position:absolute;top:2px;right:0;min-width:17px;height:17px;border-radius:9px;background:var(--ink);color:var(--paper);font-size:10px;font-weight:700;display:grid;place-items:center;padding:0 4px}
+@media (max-width:760px){nav,.search{display:none}.hd{justify-content:space-between}}
+
+/* hero rail */
+.hero{position:relative;overflow:hidden;
+  background:
+   radial-gradient(60% 70% at 85% 10%,var(--wall-a),transparent 70%),
+   radial-gradient(70% 70% at 10% 100%,var(--wall-b),transparent 70%),
+   var(--wall-c)}
+.eyebrow{display:flex;justify-content:center;gap:14px;padding-top:34px;font-size:11px;font-weight:600;letter-spacing:.22em;text-transform:uppercase}
+.eyebrow span+span{color:var(--ink-soft);border-left:1px solid var(--line);padding-left:14px}
+.rail{position:relative;height:clamp(330px,46vw,470px);margin-top:26px;touch-action:pan-y;cursor:grab;user-select:none;-webkit-user-select:none}
+.rail.dragging{cursor:grabbing}
+.rod{position:absolute;left:-2%;right:-2%;top:30px;height:7px;border-radius:4px;
+  background:linear-gradient(180deg,#fff 0%,var(--rod) 55%,color-mix(in srgb,var(--rod) 60%,#000) 100%);
+  box-shadow:0 6px 14px rgba(40,30,60,.12)}
+.piece{position:absolute;top:18px;left:0;width:var(--pw);will-change:transform;padding:0}
+.swing{transform-origin:50% 8px;transition:filter .3s}
+.piece svg{display:block;width:100%;height:auto;overflow:visible;filter:drop-shadow(0 14px 14px rgba(30,20,50,.18))}
+.piece:hover .swing{filter:brightness(1.04)}
+.piece .lift{transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.piece:hover .lift,.piece:focus-visible .lift{transform:translateY(-6px) scale(1.035)}
+.tag{position:absolute;top:30px;left:54%;font-family:var(--mono);font-size:10px;font-weight:500;background:#fff;color:#17161c;padding:2px 5px;border-radius:2px;box-shadow:0 2px 6px rgba(0,0,0,.12);transform:rotate(6deg);z-index:2;white-space:nowrap}
+.tag::before{content:"";position:absolute;left:6px;top:-9px;width:1px;height:10px;background:#888}
+.hero-foot{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:16px;padding-block:6px 26px;max-width:1440px;margin:0 auto}
+.hover-info{font-size:12px;color:var(--ink-soft);min-height:36px}
+.hover-info b{display:block;color:var(--ink);font-weight:600;font-size:13px}
+.progress{width:140px;height:2px;background:var(--line);border-radius:2px;position:relative;overflow:hidden}
+.progress i{position:absolute;top:0;bottom:0;left:0;width:30%;background:var(--ink);border-radius:2px}
+.pitch{justify-self:end;text-align:right;font-size:12px;max-width:260px}
+.pitch p{margin:0 0 8px;font-weight:600;text-wrap:balance}
+.pitch a{color:var(--ink);font-size:12px;text-decoration:none;border-bottom:1px solid currentColor}
+@media (max-width:640px){.hero-foot{grid-template-columns:1fr;justify-items:start}.pitch{justify-self:start;text-align:left}.progress{order:3}}
+
+/* collection grid */
+.collection{max-width:1440px;margin:0 auto;padding-block:56px 80px}
+.collection h2{font-family:var(--display);font-stretch:118%;font-weight:800;font-size:clamp(26px,4vw,40px);letter-spacing:-.01em;margin:0 0 6px;text-wrap:balance}
+.collection .sub{color:var(--ink-soft);margin:0 0 28px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:18px}
+.card{text-align:left;display:flex;flex-direction:column;gap:10px}
+.card .ph{background:var(--paper-2);border-radius:6px;aspect-ratio:4/5;display:grid;place-items:center;padding:16px 26px;max-width:100%;transition:background .3s}
+.card:hover .ph{background:color-mix(in srgb,var(--paper-2) 80%,var(--wall-a))}
+.card .ph svg{width:72%;height:auto;overflow:visible}
+.card .meta{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.card .meta span:first-child{font-weight:600}
+.card .meta span:last-child{font-family:var(--mono);font-size:13px}
+.dots{display:flex;gap:5px}
+.dots i{width:10px;height:10px;border-radius:50%;border:1px solid var(--line)}
+
+/* product sheet */
+.sheet{position:fixed;inset:0;z-index:80;background:var(--paper);display:grid;grid-template-columns:1.25fr 1fr;animation:rise .45s cubic-bezier(.2,.8,.2,1)}
+@keyframes rise{from{transform:translateY(24px);opacity:0}}
+.stage{position:relative;display:grid;place-items:center;padding:60px 20px;overflow:hidden;
+  background:radial-gradient(70% 60% at 50% 40%,var(--paper) ,var(--paper-2))}
+.stage .hang{width:min(340px,70%);transform-origin:50% 8px;animation:settle 2.2s cubic-bezier(.3,.6,.3,1)}
+.stage .hang svg{width:100%;height:auto;overflow:visible;filter:drop-shadow(0 22px 24px rgba(30,20,50,.2))}
+@keyframes settle{0%{transform:rotate(9deg)}25%{transform:rotate(-6deg)}50%{transform:rotate(3deg)}75%{transform:rotate(-1.2deg)}100%{transform:rotate(0)}}
+.info{padding:72px max(16px,env(safe-area-inset-right,0px)) 40px 40px;overflow:auto;display:flex;flex-direction:column;gap:18px;max-width:520px}
+.crumbs{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft)}
+.info h1{font-family:var(--display);font-stretch:112%;font-weight:700;font-size:clamp(24px,3vw,32px);margin:0;line-height:1.1}
+.price{font-family:var(--mono);font-size:16px}
+.label{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:8px}
+.swatches,.sizes{display:flex;gap:8px;flex-wrap:wrap}
+.sw{width:30px;height:30px;border-radius:50%;border:2px solid var(--paper);box-shadow:0 0 0 1px var(--line)}
+.sw[aria-pressed="true"]{box-shadow:0 0 0 2px var(--ink)}
+.sz{min-width:44px;height:36px;padding:0 10px;border-radius:999px;border:1px solid var(--line);font-size:13px;font-weight:600}
+.sz:hover{border-color:var(--ink)}
+.sz[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.cta{height:48px;border-radius:999px;background:var(--ink);color:var(--paper);font-weight:600;font-size:14px;transition:transform .15s}
+.cta:active{transform:scale(.98)}
+.links{display:flex;justify-content:space-between;font-size:13px;border-top:1px solid var(--line);padding-top:14px}
+.links button{text-decoration:underline;text-underline-offset:3px}
+.desc{color:var(--ink-soft);font-size:14px;max-width:60ch;margin:0}
+table.guide{border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums;width:100%}
+table.guide th,table.guide td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left}
+.close{position:absolute;top:16px;right:max(16px,env(safe-area-inset-right,0px));z-index:3;width:40px;height:40px;border-radius:50%;background:var(--paper-2);display:grid;place-items:center}
+.close svg{width:16px;height:16px}
+@media (max-width:820px){.sheet{grid-template-columns:1fr;overflow:auto}.stage{padding:56px 16px 20px;min-height:52vh}.info{padding:8px max(16px,env(safe-area-inset-right,0px)) 40px max(16px,env(safe-area-inset-left,0px));overflow:visible}}
+
+/* cart */
+.scrim{position:fixed;inset:0;z-index:90;background:rgba(15,12,22,.35)}
+.drawer{position:fixed;top:0;right:0;bottom:0;z-index:91;width:min(400px,100%);background:var(--paper);display:flex;flex-direction:column;padding:calc(20px + env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) 20px;animation:slide .3s ease-out}
+@keyframes slide{from{transform:translateX(30px);opacity:0}}
+.drawer h3{margin:0 0 16px;font-family:var(--display);font-stretch:112%;font-size:20px}
+.lines{flex:1;overflow:auto;display:flex;flex-direction:column;gap:14px}
+.line{display:grid;grid-template-columns:56px 1fr auto;gap:12px;align-items:center}
+.line .th{background:var(--paper-2);border-radius:4px;padding:4px}
+.line .th svg{width:100%;height:auto}
+.line small{color:var(--ink-soft);display:block}
+.line .rm{font-size:12px;color:var(--ink-soft);text-decoration:underline}
+.total{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:14px;margin:14px 0;font-weight:600;font-variant-numeric:tabular-nums}
+.empty{color:var(--ink-soft)}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:100;background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:999px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.2);max-width:calc(100% - 32px)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<!-- shared shading -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="shade" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#fff" stop-opacity=".16"/>
+      <stop offset=".45" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".22"/>
+    </linearGradient>
+    <linearGradient id="fall" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".12"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" x2="1">
+      <stop offset="0" stop-color="#d9d9de"/><stop offset=".5" stop-color="#9a9aa3"/><stop offset="1" stop-color="#c8c8cf"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<header class="gutter">
+  <div class="hd">
+    <a class="logo" href="#" aria-label="Hangline home" style="color:inherit;text-decoration:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3a3 3 0 0 1 3 3c0 1.6-1.4 2.2-3 3.2V11"/><path d="M12 11 3 18h18z"/></svg>
+      HANGLINE
+    </a>
+    <nav aria-label="Main">
+      <a href="#" aria-current="page">Home</a><a href="#collection">Collection</a><a href="#" data-open="h-orbit">Orbit Hoodie</a><a href="#collection">Runway</a>
+    </nav>
+    <div class="tools">
+      <label class="search"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" placeholder="Search" aria-label="Search"></label>
+      <button class="iconbtn" id="cartBtn" aria-label="Open bag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><span class="badge" id="count" hidden>0</span></button>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="eyebrow gutter"><span>New collection</span><span>Premium streetwear</span></div>
+  <div class="rail" id="rail" aria-label="Clothes rail. Drag to browse, click a piece for details.">
+    <div class="rod"></div>
+  </div>
+  <div class="hero-foot gutter">
+    <div class="hover-info" id="hoverInfo"><b>Hover a piece</b>Drag the rail · click to view details</div>
+    <div class="progress" aria-hidden="true"><i id="prog"></i></div>
+    <div class="pitch"><p>Crafted in 480 gsm heavyweight fleece. Cut oversized. Made to last.</p><a href="#collection">Shop the collection →</a></div>
+  </div>
+</section>
+
+<section class="collection gutter" id="collection">
+  <h2>The Fall 26 Rail</h2>
+  <p class="sub" id="sub">Eight pieces, each in limited colourways.</p>
+  <div class="grid" id="grid"></div>
+</section>
+
+<div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="pvName"></div>
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-label="Bag"></aside>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+(()=>{
+const P=[
+ {id:"h-orbit",type:"hoodie",name:"Orbit Heavyweight Hoodie",cat:"Hoodies",price:129,colors:[["Ash grey","#b9bbbd"],["Forest","#2f7a45"],["Ink","#2c3140"]],desc:"Double-layer hood, dropped shoulder and a kangaroo pocket lined in brushed fleece."},
+ {id:"j-navy",type:"jacket",name:"Workshop Overshirt Jacket",cat:"Jackets",price:189,colors:[["Navy","#25304d"],["Charcoal","#3a3a3f"]],desc:"Boxy overshirt in dense wool blend with corozo buttons and two chest pockets."},
+ {id:"z-coal",type:"zip",name:"Rail Zip Hoodie",cat:"Hoodies",price:139,colors:[["Coal","#3f4046"],["Oat","#e3d6bd"],["Fog","#d1d3d4"]],desc:"Two-way metal zip, rib side panels and a bonded hood that keeps its shape."},
+ {id:"c-oat",type:"crew",name:"Loopback Crewneck",cat:"Sweatshirts",price:99,colors:[["Oat","#e8dcc2"],["Sage","#9fb79a"],["Black","#222226"]],desc:"Garment-dyed loopback cotton with a deep 1x1 rib collar and cuffs."},
+ {id:"t-reign",type:"tee",name:"Crown Jersey Tee",cat:"T-shirts",price:69,colors:[["Graphite","#2f3034"],["Bone","#efe8db"]],print:"Crown",desc:"Mesh-panel jersey tee with a pink tipped collar and a gothic chest print."},
+ {id:"h-green",type:"hoodie",name:"Pitch Green Hoodie",cat:"Hoodies",price:129,colors:[["Pitch","#1f8a46"],["Bottle","#1d4f33"]],desc:"The Orbit cut in a saturated garment-dyed green. Each piece fades slightly differently."},
+ {id:"t-blank",type:"tee",name:"Daily Box Tee",cat:"T-shirts",price:49,colors:[["Cloud","#e9e9ea"],["Slate","#6c7280"],["Moss","#5c7150"]],desc:"260 gsm cotton, cropped boxy fit, taped neck seam."},
+ {id:"c-grey",type:"crew",name:"Studio Crew Sweat",cat:"Sweatshirts",price:95,colors:[["Heather","#c7c8cb"],["Navy","#2b3550"]],desc:"Classic sweat with a V-insert at the collar and a slightly cropped hem."}
+];
+const SIZES=["XS","S","M","L","XL"];
+const $=s=>document.querySelector(s);
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const shadeHex=(h,a)=>{const n=parseInt(h.slice(1),16);let r=n>>16,g=n>>8&255,b=n&255;const f=v=>Math.max(0,Math.min(255,Math.round(a<0?v*(1+a):v+(255-v)*a)));return"#"+[f(r),f(g),f(b)].map(x=>x.toString(16).padStart(2,"0")).join("")};
+const money=n=>"$"+n.toFixed(2);
+
+function garment(type,hex,opt={}){
+  const d=shadeHex(hex,-.28),l=shadeHex(hex,.12),hang=opt.hanger!==false;
+  const S=(p,f=hex,extra="")=>`<path d="${p}" fill="${f}" ${extra}/>`;
+  const over=p=>`<path d="${p}" fill="url(#shade)"/><path d="${p}" fill="url(#fall)"/>`;
+  let g="";
+  const longSleeve="M66 42 L46 50 Q32 62 30 92 L24 214 L48 219 L58 112 L58 236 L142 236 L142 112 L152 219 L176 214 L170 92 Q168 62 154 50 L134 42 Q100 58 66 42Z";
+  const cuffs=S("M24 206 L49 211 L48 222 L23 217Z",d)+S("M176 206 L151 211 L152 222 L177 217Z",d);
+  if(type==="hoodie"||type==="zip"){
+    g+=S("M64 46 Q58 8 100 6 Q142 8 136 46 Z",d);
+    g+=S(longSleeve)+over(longSleeve)+cuffs;
+    g+=S("M58 226 L142 226 L142 240 L58 240Z",d);
+    g+=S("M74 44 Q100 70 126 44 Q122 22 100 20 Q78 22 74 44Z",shadeHex(hex,-.45));
+    g+=S("M74 44 Q100 64 126 44 Q100 54 74 44Z",l);
+    if(type==="hoodie"){
+      g+=S("M74 168 L126 168 L136 214 L64 214Z",shadeHex(hex,-.08))+`<path d="M74 168 L64 214 M126 168 L136 214" stroke="${d}" stroke-width="1.5"/>`;
+      g+=`<path d="M92 56 L90 98 M108 56 L110 98" stroke="${l}" stroke-width="2.5" stroke-linecap="round"/>`;
+    }else{
+      g+=`<path d="M100 54 L100 238" stroke="${shadeHex(hex,-.5)}" stroke-width="3"/><path d="M100 54 L100 238" stroke="#c9c9cf" stroke-width="1" stroke-dasharray="2 2"/><rect x="96" y="86" width="8" height="14" rx="2" fill="url(#metal)"/>`;
+      g+=S("M64 174 L86 168 L86 210 L64 214Z",shadeHex(hex,-.1))+S("M136 174 L114 168 L114 210 L136 214Z",shadeHex(hex,-.1));
+    }
+  }else if(type==="crew"){
+    g+=S(longSleeve)+over(longSleeve)+cuffs+S("M58 224 L142 224 L142 240 L58 240Z",d);
+    g+=S("M72 42 Q100 66 128 42 Q100 56 72 42Z",d);
+    g+=S("M93 50 L100 66 L107 50Z",d);
+  }else if(type==="jacket"){
+    const b="M64 42 L44 50 Q30 62 28 94 L22 220 L46 224 L56 116 L54 240 L146 240 L144 116 L154 224 L178 220 L172 94 Q170 62 156 50 L136 42 L100 60Z";
+    g+=S(b)+over(b);
+    g+=S("M64 42 L100 60 L86 118 L74 64Z",l)+S("M136 42 L100 60 L114 118 L126 64Z",shadeHex(hex,-.15));
+    g+=`<path d="M100 60 L100 240" stroke="${d}" stroke-width="2"/>`;
+    [128,158,188,218].forEach(y=>g+=`<circle cx="104" cy="${y}" r="3" fill="${shadeHex(hex,-.55)}"/>`);
+    g+=S("M66 110 L90 110 L90 132 L66 132Z",shadeHex(hex,-.08))+S("M110 110 L134 110 L134 132 L110 132Z",shadeHex(hex,-.08));
+  }else{ // tee
+    const t="M70 40 L50 46 L18 82 L40 104 L58 88 L58 240 L142 240 L142 88 L160 104 L182 82 L150 46 L130 40 Q100 60 70 40Z";
+    g+=S(t)+over(t);
+    g+=`<path d="M70 40 Q100 62 130 40" stroke="${opt.print?"#e7a9c2":d}" stroke-width="5" fill="none" stroke-linecap="round"/>`;
+    if(opt.print) g+=`<text x="100" y="128" text-anchor="middle" font-family="UnifrakturMaguntia,Georgia,serif" font-weight="700" font-style="italic" font-size="30" fill="${shadeHex(hex,.85)}">${opt.print}</text><text x="100" y="98" text-anchor="middle" font-size="16" fill="${shadeHex(hex,.85)}">✦</text><text x="100" y="142" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="6" letter-spacing="2" fill="${shadeHex(hex,.6)}">EST. 2026</text>`;
+  }
+  const hook=hang?`<path d="M100 22 L100 10 Q100 -2 108 -6 Q116 -12 110 -20 Q104 -26 97 -21" fill="none" stroke="url(#metal)" stroke-width="3.2" stroke-linecap="round"/><path d="M100 22 L40 40 L160 40Z" fill="none" stroke="#8a6b48" stroke-width="5" stroke-linejoin="round"/>`:"";
+  return `<svg viewBox="0 -28 200 272" aria-hidden="true">${hook}${g}</svg>`;
+}
+
+/* ---------- rail ---------- */
+const rail=$("#rail"), items=[];
+let sp=150, total=0, offset=0, vel=0, dragging=false, lastX=0, moved=0, downPiece=null, hovering=false, prevOffset=0;
+const railList=[];
+for(let r=0;r<3;r++)P.forEach((p,i)=>railList.push({p,ci:(i+r)%p.colors.length}));
+railList.forEach(({p,ci},i)=>{
+  const b=document.createElement("button");
+  b.className="piece";b.dataset.id=p.id;b.dataset.ci=ci;
+  b.setAttribute("aria-label",`${p.name}, ${p.colors[ci][0]}, $${p.price}`);
+  b.innerHTML=`<div class="swing"><div class="lift"><span class="tag">$${p.price}</span>${garment(p.type,p.colors[ci][1],{print:p.print})}</div></div>`;
+  rail.appendChild(b);
+  const it={el:b,sw:b.firstElementChild,a:0,av:0,p,ci};
+  b.addEventListener("pointerenter",()=>{it.av+=(Math.random()>.5?1:-1)*1.6;showHover(p,ci)});
+  b.addEventListener("click",e=>{if(e.detail===0)openProduct(p.id,ci)});
+  b.addEventListener("focus",()=>showHover(p,ci));
+  items.push(it);
+});
+function layout(){
+  const w=Math.max(92,Math.min(150,innerWidth*.12));
+  rail.style.setProperty("--pw",w+"px");
+  rail.style.height=Math.round(w*1.36+70)+"px";
+  sp=w*1.08;total=items.length*sp;
+}
+layout();addEventListener("resize",layout);
+function showHover(p,ci){$("#hoverInfo").innerHTML=`<b>${p.name}</b>${p.colors[ci][0]} · ${money(p.price)}`}
+rail.addEventListener("pointerenter",()=>hovering=true);
+rail.addEventListener("pointerleave",()=>{hovering=false});
+rail.addEventListener("pointerdown",e=>{dragging=true;lastX=e.clientX;moved=0;vel=0;downPiece=e.target.closest(".piece");rail.setPointerCapture(e.pointerId);rail.classList.add("dragging")});
+rail.addEventListener("pointermove",e=>{if(!dragging)return;const dx=e.clientX-lastX;lastX=e.clientX;moved+=Math.abs(dx);offset+=dx;vel=dx});
+const end=e=>{if(!dragging)return;dragging=false;rail.classList.remove("dragging");
+  if(moved<6&&downPiece){vel=0;openProduct(downPiece.dataset.id,+downPiece.dataset.ci)}downPiece=null};
+rail.addEventListener("pointerup",end);rail.addEventListener("pointercancel",end);
+rail.addEventListener("wheel",e=>{if(Math.abs(e.deltaX)>Math.abs(e.deltaY)){e.preventDefault();offset-=e.deltaX*.8}},{passive:false});
+rail.addEventListener("keydown",e=>{if(e.key==="ArrowRight")vel-=6;if(e.key==="ArrowLeft")vel+=6});
+
+const prog=$("#prog");
+function tick(){
+  if(!dragging){vel*=.94;offset+=vel;if(!hovering&&!reduce&&$("#sheet").hidden)offset-=.45}
+  const dv=offset-prevOffset;prevOffset=offset;
+  const W=rail.clientWidth;
+  items.forEach((it,i)=>{
+    let x=((i*sp+offset)%total+total)%total-sp;
+    it.el.style.transform=`translate3d(${x}px,0,0)`;
+    it.el.style.visibility=(x>W+sp||x<-sp*1.5)?"hidden":"visible";
+    if(!reduce){const target=Math.max(-16,Math.min(16,-dv*1.1));it.av+=(target-it.a)*.05;it.av*=.9;it.a+=it.av;it.sw.style.transform=`rotate(${it.a.toFixed(2)}deg)`}
+  });
+  const pr=(((-offset)%total+total)%total)/total;
+  prog.style.left=(pr*70)+"%";
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+
+/* ---------- grid ---------- */
+function renderGrid(q=""){
+  const list=P.filter(p=>(p.name+p.cat).toLowerCase().includes(q.toLowerCase()));
+  $("#grid").innerHTML=list.map(p=>`<button class="card" data-id="${p.id}"><div class="ph">${garment(p.type,p.colors[0][1],{print:p.print})}</div><div class="meta"><span>${p.name}</span><span>$${p.price}</span></div><div class="dots">${p.colors.map(c=>`<i style="background:${c[1]}"></i>`).join("")}</div></button>`).join("")||`<p class="empty">No pieces match “${q}”.</p>`;
+  $("#sub").textContent=q?`${list.length} of ${P.length} pieces match “${q}”.`:"Eight pieces, each in limited colourways.";
+}
+renderGrid();
+$("#grid").addEventListener("click",e=>{const c=e.target.closest(".card");if(c)openProduct(c.dataset.id,0)});
+$("#q").addEventListener("input",e=>{renderGrid(e.target.value);if(e.target.value)$("#collection").scrollIntoView({behavior:reduce?"auto":"smooth"})});
+document.querySelectorAll("[data-open]").forEach(a=>a.addEventListener("click",e=>{e.preventDefault();openProduct(a.dataset.open,0)}));
+
+/* ---------- product sheet ---------- */
+const sheet=$("#sheet");let cur=null,lastFocus=null;
+function openProduct(id,ci=0){
+  const p=P.find(x=>x.id===id);cur={p,ci,size:"M",guide:false};lastFocus=document.activeElement;
+  sheet.hidden=false;document.body.style.overflow="hidden";renderSheet(true);sheet.querySelector(".close").focus();
+}
+function renderSheet(fresh){
+  const {p,ci,size,guide}=cur;
+  sheet.innerHTML=`
+  <button class="close" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l10 10M13 3 3 13"/></svg></button>
+  <div class="stage"><div class="hang"${fresh?"":' style="animation:none"'}>${garment(p.type,p.colors[ci][1],{print:p.print})}</div></div>
+  <div class="info">
+    <div class="crumbs">Fall 26 / ${p.cat}</div>
+    <h1 id="pvName">${p.name}</h1>
+    <div class="price">${money(p.price)}</div>
+    <div><div class="label">Colour · ${p.colors[ci][0]}</div><div class="swatches">${p.colors.map((c,i)=>`<button class="sw" style="background:${c[1]}" aria-label="${c[0]}" aria-pressed="${i===ci}" data-ci="${i}"></button>`).join("")}</div></div>
+    <div><div class="label">Size</div><div class="sizes">${SIZES.map(s=>`<button class="sz" aria-pressed="${s===size}" data-sz="${s}">${s}</button>`).join("")}</div></div>
+    <button class="cta" id="add">Add to bag · ${size}</button>
+    <p class="desc">${p.desc}</p>
+    ${guide?`<div style="overflow-x:auto"><table class="guide"><tr><th>Size</th><th>Chest (cm)</th><th>Length (cm)</th></tr>${SIZES.map((s,i)=>`<tr><td>${s}</td><td>${56+i*3}</td><td>${68+i*2}</td></tr>`).join("")}</table></div>`:""}
+    <div class="links"><button id="guideBtn">${guide?"Hide size guide":"Size guide"}</button><button id="careBtn">Care: 30°C, dry flat</button></div>
+  </div>`;
+}
+sheet.addEventListener("click",e=>{
+  const t=e.target.closest("button");if(!t)return;
+  if(t.classList.contains("close"))return closeSheet();
+  if(t.dataset.ci){cur.ci=+t.dataset.ci;renderSheet(true);return}
+  if(t.dataset.sz){cur.size=t.dataset.sz;renderSheet(false);return}
+  if(t.id==="guideBtn"){cur.guide=!cur.guide;renderSheet(false);return}
+  if(t.id==="add"){addToBag(cur.p,cur.ci,cur.size)}
+});
+function closeSheet(){sheet.hidden=true;document.body.style.overflow="";lastFocus&&lastFocus.focus&&lastFocus.focus()}
+addEventListener("keydown",e=>{if(e.key==="Escape"){if(!$("#drawer").hidden)closeBag();else if(!sheet.hidden)closeSheet()}});
+
+/* ---------- bag ---------- */
+let bag=[];
+try{bag=JSON.parse(localStorage.getItem("hangline-bag")||"[]")}catch(_){bag=[]}
+const save=()=>{try{localStorage.setItem("hangline-bag",JSON.stringify(bag))}catch(_){}};
+function updateCount(){const n=bag.reduce((a,b)=>a+b.qty,0);const c=$("#count");c.hidden=!n;c.textContent=n}
+function addToBag(p,ci,size){
+  const ex=bag.find(b=>b.id===p.id&&b.ci===ci&&b.size===size);
+  ex?ex.qty++:bag.push({id:p.id,ci,size,qty:1});save();updateCount();
+  toast(`Added ${p.name} (${p.colors[ci][0]}, ${size}) to your bag`);
+}
+let tt;function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,2400)}
+function renderBag(){
+  const sum=bag.reduce((a,b)=>a+P.find(p=>p.id===b.id).price*b.qty,0);
+  $("#drawer").innerHTML=`<h3>Your bag</h3><div class="lines">${bag.length?bag.map((b,i)=>{const p=P.find(x=>x.id===b.id);return`<div class="line"><div class="th">${garment(p.type,p.colors[b.ci][1],{hanger:false,print:p.print})}</div><div><b>${p.name}</b><small>${p.colors[b.ci][0]} · ${b.size} · Qty ${b.qty}</small><button class="rm" data-rm="${i}">Remove</button></div><span style="font-family:var(--mono)">${money(p.price*b.qty)}</span></div>`}).join(""):`<p class="empty">Your bag is empty. Pick something off the rail.</p>`}</div>
+  <div class="total"><span>Subtotal</span><span>${money(sum)}</span></div>
+  <button class="cta" id="checkout"${bag.length?"":" disabled style=\"opacity:.4\""}>Checkout</button>
+  <button style="margin-top:10px;font-size:13px;text-decoration:underline" id="closeBag">Keep browsing</button>`;
+}
+function openBag(){renderBag();$("#drawer").hidden=false;$("#scrim").hidden=false}
+function closeBag(){$("#drawer").hidden=true;$("#scrim").hidden=true}
+$("#cartBtn").addEventListener("click",openBag);
+$("#scrim").addEventListener("click",closeBag);
+$("#drawer").addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
+  if(t.dataset.rm){bag.splice(+t.dataset.rm,1);save();updateCount();renderBag()}
+  else if(t.id==="closeBag")closeBag();
+  else if(t.id==="checkout")toast("This is a demo store, so checkout is not connected.")});
+updateCount();
+})();
+</script>
+</body></html>
