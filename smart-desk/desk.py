@@ -135,6 +135,22 @@ def parse_owners(cfg: dict) -> frozenset[str]:
     return frozenset(names)
 
 
+def resolve_owners(owners: frozenset[str], known) -> frozenset[str]:
+    """Config-dəki adları faces/ fayl adlarına uyğunlaşdırır (böyük/kiçik hərf fərq etmir)."""
+    by_lower = {k.lower(): k for k in known}
+    resolved, missing = set(), []
+    for o in owners:
+        if o.lower() in by_lower:
+            resolved.add(by_lower[o.lower()])
+        else:
+            missing.append(o)
+    if missing:
+        have = ", ".join(sorted(known)) or "heç kim"
+        raise SystemExit(f"Tanınmayan sahib(lər): {', '.join(missing)}. Tanıdılmış şəxslər: {have}. "
+                         f"Ya config.yaml-da owner adını düzəlt, ya da: python enroll.py --name {missing[0]}")
+    return frozenset(resolved)
+
+
 def load_config(path: Path) -> dict:
     if not path.exists():
         raise SystemExit(f"{path.name} yoxdur. Əvvəlcə: cp config.example.yaml config.yaml")
@@ -147,10 +163,7 @@ def run(cfg: dict, preview: bool):
     tg_cfg = cfg.get("telegram", {}) or {}
 
     db = FaceDB(threshold=rec.get("threshold", 0.40))
-    missing = [o for o in owners if o not in db.people]
-    if missing:
-        raise SystemExit(f"Tanınmayan sahib(lər): {', '.join(missing)}. "
-                         f"Əvvəlcə: python enroll.py --name {missing[0]}")
+    owners = resolve_owners(owners, db.people)
     engine = FaceEngine()
     tg = Telegram(tg_cfg.get("bot_token"), tg_cfg.get("chat_id"))
     log = EventLog()

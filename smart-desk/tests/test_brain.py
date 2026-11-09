@@ -77,6 +77,17 @@ def test_owner_list_from_config():
     assert parse_owners({"owner": ["ruslan", "aysel"]}) == {"ruslan", "aysel"}
 
 
+def test_owner_names_ignore_case():
+    from desk import resolve_owners
+    assert resolve_owners(frozenset({"Ruslan", "ELENA"}), ["ruslan", "elena"]) == {"ruslan", "elena"}
+    try:
+        resolve_owners(frozenset({"Ruslan"}), ["elena"])
+    except SystemExit as e:
+        assert "Tanıdılmış şəxslər: elena" in str(e)
+    else:
+        raise AssertionError("SystemExit gözlənilirdi")
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
