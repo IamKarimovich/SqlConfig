@@ -1,6 +1,7 @@
 """Smart Desk-i kompüter açılanda avtomatik başlat.
 
-  python autostart.py install     # Startup-a əlavə et
+  python autostart.py install     # Startup-a əlavə et (gözləmədən dərhal başlayır)
+  python autostart.py install --delay 10   # login-dən 10 saniyə sonra başlasın
   python autostart.py uninstall   # sil
   python autostart.py status      # yoxla
 
@@ -29,7 +30,7 @@ def pythonw() -> Path:
     return w if w.exists() else exe
 
 
-def install_windows() -> None:
+def install_windows(delay: int = 0) -> None:
     startup, vbs = windows_paths()
     py = pythonw()
     if ".venv" not in str(py).lower() and "venv" not in str(py).lower():
@@ -41,13 +42,14 @@ def install_windows() -> None:
         raise SystemExit("Üz tanıdılmayıb — əvvəlcə: python enroll.py --name <adın>")
 
     # VBScript: konsol pəncərəsi açmadan (0 = gizli) pythonw ilə desk.py-ı işə salır.
-    # 20 saniyə gözləmə: login-dən sonra Windows kameranı və şəbəkəni hazırlasın.
+    # Gözləmə default olaraq yoxdur: desk.py kamera hazır olana qədər özü gözləyir
+    # (config.yaml -> camera_wait_seconds). --delay yalnız lazım olsa.
     q = lambda p: '"""' + str(p) + '"""'  # noqa: E731 — VBS içində dırnaq
     content = (
         'Set sh = CreateObject("WScript.Shell")\r\n'
-        "WScript.Sleep 20000\r\n"
-        f'sh.CurrentDirectory = "{BASE_DIR}"\r\n'
-        f"sh.Run {q(py)} & \" \" & {q(DESK)}, 0, False\r\n"
+        + (f"WScript.Sleep {delay * 1000}\r\n" if delay > 0 else "")
+        + f'sh.CurrentDirectory = "{BASE_DIR}"\r\n'
+        + f"sh.Run {q(py)} & \" \" & {q(DESK)}, 0, False\r\n"
     )
     startup.mkdir(parents=True, exist_ok=True)
     vbs.write_text(content, encoding="mbcs")  # WSH ANSI kodlaşdırma gözləyir
@@ -55,7 +57,8 @@ def install_windows() -> None:
     print(f"   Python: {py}")
     print("   Növbəti dəfə kompüter açılanda Smart Desk özü başlayacaq (pəncərəsiz).")
     print(f"   Loglar: {BASE_DIR / 'desk.log'}")
-    print("   İndi sınamaq üçün həmin .vbs faylına iki dəfə kliklə və 20 saniyə gözlə.")
+    print(f"   Gözləmə: {delay} saniyə" + (" (login-dən dərhal sonra başlayır)" if delay == 0 else ""))
+    print("   İndi sınamaq üçün həmin .vbs faylına iki dəfə kliklə.")
 
 
 def main() -> None:
@@ -65,7 +68,13 @@ def main() -> None:
                          "'Kompüter açılanda avtomatik başlasın' bölməsinə bax.")
     _, vbs = windows_paths()
     if cmd == "install":
-        install_windows()
+        delay = 0
+        if "--delay" in sys.argv:
+            try:
+                delay = max(0, int(sys.argv[sys.argv.index("--delay") + 1]))
+            except (IndexError, ValueError):
+                raise SystemExit("İstifadə: python autostart.py install --delay <saniyə>") from None
+        install_windows(delay)
     elif cmd == "uninstall":
         if vbs.exists():
             vbs.unlink()
