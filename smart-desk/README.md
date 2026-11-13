@@ -5,7 +5,7 @@ Webcam səni izləyir və:
 | Hadisə | Nə baş verir |
 |---|---|
 | 🟢 **Masaya oturursan** | Səni tanıyır və iş mühitini açır: VS Code, Slack, Spotify playlist… |
-| 🔒 **Masadan qalxırsan** | ~12 saniyədən sonra ekran avtomatik kilidlənir |
+| 🔒 **Masadan qalxırsan** | 5 dəqiqədən sonra (istədiyin qədər) ekran avtomatik kilidlənir |
 | 🚨 **Başqası oturur** | Ekranı kilidləyir, şəklini çəkir və **Telegram**-la sənə göndərir |
 | 👀 **Arxandan kimsə baxır** *(istəyə görə)* | "Shoulder surfer" xəbərdarlığı |
 | 📊 **Gün sonu** | `--report`: bu gün masada nə qədər oturmusan |
@@ -13,6 +13,25 @@ Webcam səni izləyir və:
 Yalnız **OpenCV** istifadə olunur (YuNet aşkarlama və SFace tanıma). `dlib` və ya `face_recognition` kompilyasiya etmək lazım deyil. Windows, macOS və Linux-da işləyir, GPU tələb etmir.
 
 ---
+
+## 🖥️ Ayarlar tətbiqi
+
+Bütün ayarları pəncərəli tətbiqdən dəyişə bilərsən, kod yazmaq lazım deyil:
+
+```powershell
+python app.py
+python autostart.py shortcut     # masaüstünə və Start menyusuna "Smart Desk" qısayolu
+```
+
+| Bölmə | Nə var |
+|---|---|
+| **Ümumi** | Başlat / Dayandır / Kamera testi, kilid müddəti (30 san … 15 dəq və ya istənilən), yad şəxs ayarları, tanıma dəqiqliyi, "kompüter açılanda başlasın" |
+| **Şəxslər** | Yeni şəxs tanıt, nümunə əlavə et, ⭐ sahib et / çıxar, qarışığı yoxla və düzəlt, sil |
+| **Proqramlar** | Oturanda açılacaqlar: `.exe` seç, Start menyusundan seç (Claude kimi Store tətbiqləri), sayt, əmr; "indi aç" ilə test |
+| **Telegram** | Token, chat_id-ni avtomatik tapmaq, test mesajı |
+| **Jurnal** | Bugünkü masa vaxtı və son hadisələr |
+
+Dəyişikliklər avtomatik saxlanılır. Arxa fonda işləyən Smart Desk onları **2–3 saniyəyə, yenidən başlatmadan** tətbiq edir.
 
 ## 🚀 Quraşdırma (5 dəqiqə)
 
@@ -114,7 +133,7 @@ kamera → YuNet (üz tap) → SFace (128 ölçülü vektor) → faces/*.npy il�
                                                     ↓
                      DeskBrain vəziyyət maşını: YOXSAN ⇄ MASADASAN
                      ├─ 3 ardıcıl kadr səni görür → "arrived" (+ proqramları aç)
-                     ├─ 12 saniyə görmür          → "left" + ekranı kilidlə
+                     ├─ 5 dəqiqə görmür           → "left" + ekranı kilidlə
                      └─ 4 ardıcıl kadr yad üz      → snapshot + Telegram (60 s cooldown)
 ```
 
@@ -131,6 +150,8 @@ Fayllar:
 | `desk.py` | Əsas dövr, `DeskBrain` vəziyyət maşını, overlay, Telegram setup |
 | `actions.py` | Ekran kilidi (Win/mac/Linux), proqram açma, Telegram API |
 | `autostart.py` | Windows Startup-a əlavə et / sil |
+| `app.py` | Ayarlar tətbiqi (tkinter, əlavə quraşdırma tələb etmir) |
+| `service.py` | Arxa fon prosesini başlat / dayandır / yoxla |
 | `faces.py` | Üz bazası: siyahı, qarışmış nümunələri tapıb düzəltmək, adları dəyişmək, kamera testi |
 | `events.py` | SQLite jurnal və gündəlik hesabat |
 | `tests/` | Kamerasız vəziyyət maşını testləri (`python tests/test_brain.py`) |
@@ -142,7 +163,7 @@ Fayllar:
 | İki nəfərin üzü qarışıb | `python faces.py check --fix`, sonra `python faces.py whoami`; adlar tərsdirsə `python faces.py swap ruslan elena` |
 | Səni tanımır | Fərqli işıqda `enroll.py --append` işlət və ya `threshold`-u 0.36-ya endir |
 | Başqasını sən kimi tanıyır | `threshold`-u 0.45–0.50-yə qaldır |
-| Çox tez kilidlənir | `lock_after_seconds`-u artır |
+| Çox tez / gec kilidlənir | Ayarlar tətbiqi → Ümumi → "Ekran kilidi" (və ya `lock_after_seconds`) |
 | Kamera açılmır | Başqa proqram (Zoom/Teams) kameranı istifadə edirmi? `camera: 1` sına |
 | Linux-da kilid işləmir | `loginctl lock-session`-u əl ilə yoxla; DE-nə uyğun əmri `actions.py`-a əlavə et |
 

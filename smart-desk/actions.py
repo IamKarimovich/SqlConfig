@@ -91,6 +91,23 @@ def find_start_menu_app(name: str) -> str | None:
     return app_id
 
 
+def list_start_menu_apps() -> list[tuple[str, str]]:
+    """Start menyusundakı bütün proqramlar: [(ad, AppID), ...] (ayarlar tətbiqi üçün)."""
+    if SYSTEM != "Windows":
+        return []
+    ps = "Get-StartApps | Select-Object Name, AppID | ConvertTo-Json -Compress"
+    try:
+        out = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
+                             capture_output=True, text=True, timeout=30, encoding="utf-8",
+                             errors="replace", creationflags=_NO_WINDOW).stdout.strip()
+        apps = json.loads(out) if out else []
+        apps = [apps] if isinstance(apps, dict) else apps
+        return sorted({(a["Name"], a["AppID"]) for a in apps if a.get("Name")}, key=lambda t: t[0].lower())
+    except Exception as e:  # noqa: BLE001
+        print(f"[launch] Start menyusu oxunmadı: {e}")
+        return []
+
+
 def is_running(exe_path: str) -> bool:
     """Proqram artıq açıqdırsa ikinci pəncərə açmayaq (Windows: tasklist, digərləri: pgrep)."""
     name = os.path.basename(exe_path)

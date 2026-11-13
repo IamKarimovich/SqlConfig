@@ -37,7 +37,7 @@ def _ensure_model(name: str, url: str) -> Path:
 
 
 def open_camera(index: int, width: int = 640, height: int = 480,
-                wait_seconds: float = 0) -> cv2.VideoCapture:
+                wait_seconds: float = 0, should_stop=None) -> cv2.VideoCapture:
     """wait_seconds > 0: kamera hazır olana qədər gözlə (kompüter yeni açılanda lazımdır)."""
     deadline = time.monotonic() + wait_seconds
     while True:
@@ -50,7 +50,11 @@ def open_camera(index: int, width: int = 640, height: int = 480,
         cap.release()
         if time.monotonic() >= deadline:
             raise SystemExit(f"Kamera #{index} açılmadı (başqa proqram istifadə edir? icazə verilib?)")
-        time.sleep(3)
+        for _ in range(10):  # 3 saniyə gözlə, amma dayandırma sorğusuna dərhal cavab ver
+            if should_stop and should_stop():
+                print("[service] kamera gözlənilərkən dayandırıldı")
+                raise SystemExit(0)
+            time.sleep(0.3)
 
 
 @dataclass

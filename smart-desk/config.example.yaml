@@ -14,7 +14,8 @@ recognition:
 
 presence:
   arrive_frames: 3       # neçə ardıcıl kadrda tanınsan "gəldi" sayılır
-  lock_after_seconds: 12 # səni görmədikdən neçə saniyə sonra kilidlə
+  lock_enabled: true     # false = heç vaxt kilidləmə
+  lock_after_seconds: 300  # səni görmədikdən neçə saniyə sonra kilidlə (300 = 5 dəq)
   relaunch_after_minutes: 30  # bu qədər uzaq qalsan, qayıdanda iş mühiti yenidən açılır
 
 # Masaya oturanda açılacaqlar (yalnız öz OS-in üçün olan siyahı işləyir).

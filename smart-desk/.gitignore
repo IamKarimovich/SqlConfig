@@ -6,3 +6,9 @@ events.db
 __pycache__/
 .venv/
 desk.log
+desk.pid
+desk.stop
+app.log
+smart_desk.ico
+smart_desk.png
+config.tmp

@@ -6,6 +6,7 @@
   python desk.py --telegram-setup  # chat_id-ni tap + test mesajı göndər
   python desk.py --check-apps      # Opera/Claude və s. tapılırmı?
   python autostart.py install      # kompüter açılanda avtomatik başlasın
+  python app.py                    # ayarlar tətbiqi (pəncərəli)
 """
 from __future__ import annotations
 
@@ -21,6 +22,7 @@ if sys.stdout is None or sys.stderr is None:
     print(f"\n===== autostart {_dt.datetime.now():%Y-%m-%d %H:%M:%S}  python={sys.executable}")
 
 import argparse
+import os
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -31,7 +33,8 @@ import yaml
 
 from actions import Telegram, check_apps, launch_workspace, lock_screen
 from events import EventLog
-from face_engine import BASE_DIR, Face, FaceDB, FaceEngine, open_camera
+import service
+from face_engine import BASE_DIR, FACES_DIR, Face, FaceDB, FaceEngine, open_camera
 
 SNAP_DIR = BASE_DIR / "snapshots"
 
@@ -47,7 +50,7 @@ class DeskBrain:
     """
     owners: frozenset[str]
     arrive_frames: int = 3
-    lock_after: float = 12.0
+    lock_after: float = 300.0
     relaunch_after: float = 30 * 60
     stranger_frames: int = 4
     stranger_cooldown: float = 60.0
@@ -157,72 +160,127 @@ def load_config(path: Path) -> dict:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
-def run(cfg: dict, preview: bool):
-    owners = parse_owners(cfg)
-    rec, pres, intr = cfg.get("recognition", {}), cfg.get("presence", {}), cfg.get("intruder", {})
-    tg_cfg = cfg.get("telegram", {}) or {}
+class Settings:
+    """config.yaml + faces/ — fayllar dəyişəndə işləyən proses onları yenidən oxuyur.
 
-    db = FaceDB(threshold=rec.get("threshold", 0.40))
-    owners = resolve_owners(owners, db.people)
+    Ayarlar tətbiqində "saxla" basılan kimi, yenidən başlatmadan 2-3 saniyəyə tətbiq olunur.
+    """
+
+    def __init__(self, path: Path):
+        self.path = path
+        self.load()
+
+    def _stamp(self):
+        try:
+            cfg_m = self.path.stat().st_mtime
+        except OSError:
+            cfg_m = None
+        faces = tuple(sorted((p.name, p.stat().st_mtime) for p in FACES_DIR.glob("*.npy")))
+        return cfg_m, faces
+
+    def load(self) -> None:
+        stamp = self._stamp()
+        cfg = load_config(self.path) or {}
+        rec = cfg.get("recognition", {}) or {}
+        db = FaceDB(threshold=rec.get("threshold", 0.40))
+        owners = resolve_owners(parse_owners(cfg), db.people)
+        # Hamısı uğurlu oxundusa tətbiq et (xəta olsa köhnə ayarlar qalır)
+        self.stamp = stamp
+        self.cfg, self.db, self.owners = cfg, db, owners
+        self.pres = cfg.get("presence", {}) or {}
+        self.intr = cfg.get("intruder", {}) or {}
+        self.tg_cfg = cfg.get("telegram", {}) or {}
+        self.tg = Telegram(self.tg_cfg.get("bot_token"), self.tg_cfg.get("chat_id"))
+        self.min_px = rec.get("min_face_px", 70)
+        self.period = 1.0 / max(1, cfg.get("fps", 5))
+
+    def changed(self) -> bool:
+        return self._stamp() != self.stamp
+
+    def configure(self, brain: DeskBrain) -> None:
+        brain.owners = self.owners
+        brain.arrive_frames = self.pres.get("arrive_frames", 3)
+        brain.lock_after = float(self.pres.get("lock_after_seconds", 300))
+        brain.relaunch_after = float(self.pres.get("relaunch_after_minutes", 30)) * 60
+        brain.stranger_frames = self.intr.get("confirm_frames", 4)
+        brain.stranger_cooldown = self.intr.get("cooldown_seconds", 60)
+        brain.alert_when_owner_present = self.intr.get("alert_when_owner_present", False)
+
+    def summary(self) -> str:
+        lock = "söndürülüb" if not self.pres.get("lock_enabled", True) \
+            else f"{float(self.pres.get('lock_after_seconds', 300)):.0f}s"
+        return f"sahib(lər): {', '.join(sorted(self.owners))} | kilid: {lock}"
+
+
+def run(config_path: Path, preview: bool):
+    s = Settings(config_path)
     engine = FaceEngine()
-    tg = Telegram(tg_cfg.get("bot_token"), tg_cfg.get("chat_id"))
     log = EventLog()
-    brain = DeskBrain(
-        owners=owners,
-        arrive_frames=pres.get("arrive_frames", 3),
-        lock_after=pres.get("lock_after_seconds", 12),
-        relaunch_after=pres.get("relaunch_after_minutes", 30) * 60,
-        stranger_frames=intr.get("confirm_frames", 4),
-        stranger_cooldown=intr.get("cooldown_seconds", 60),
-        alert_when_owner_present=intr.get("alert_when_owner_present", False),
-    )
-    min_px = rec.get("min_face_px", 70)
-    period = 1.0 / max(1, cfg.get("fps", 5))
+    brain = DeskBrain(owners=s.owners)
+    s.configure(brain)
 
-    print(f"👀 Smart Desk işləyir. Tanınan şəxslər: {', '.join(db.people)}  |  sahib(lər): {', '.join(sorted(owners))}")
-    print(f"   Telegram: {'aktiv' if tg.enabled else 'söndürülüb'}   (Ctrl+C / q = çıxış)")
-    log.log("start")
-    cap = open_camera(cfg.get("camera", 0), wait_seconds=cfg.get("camera_wait_seconds", 120))
-    fps, t_prev = 0.0, time.monotonic()
+    print(f"👀 Smart Desk işləyir. Tanınan şəxslər: {', '.join(s.db.people)}  |  {s.summary()}")
+    print(f"   Telegram: {'aktiv' if s.tg.enabled else 'söndürülüb'}   (Ctrl+C / q = çıxış)")
+    log.log("start", s.summary())
+    cap = open_camera(s.cfg.get("camera", 0), wait_seconds=s.cfg.get("camera_wait_seconds", 120),
+                      should_stop=service.stop_requested)
+    fps, t_prev, next_check = 0.0, time.monotonic(), 0.0
     try:
         while True:
             t0 = time.monotonic()
+
+            # --- hər 2 saniyədən bir: dayandırma sorğusu və ayar dəyişiklikləri
+            if t0 >= next_check:
+                next_check = t0 + 2.0
+                if service.stop_requested():
+                    print("[service] dayandırma sorğusu alındı")
+                    break
+                if s.changed():
+                    try:
+                        s.load()
+                        s.configure(brain)
+                        log.log("reload", s.summary())
+                    except (SystemExit, Exception) as e:  # noqa: BLE001
+                        s.stamp = s._stamp()  # eyni xətanı təkrar-təkrar yazmayaq
+                        print(f"[reload] ayarlar tətbiq olunmadı, köhnələri qalır: {e}")
+
             ok, frame = cap.read()
             if not ok:
                 time.sleep(0.5)
                 continue
             frame = cv2.flip(frame, 1)
 
-            faces = [f for f in engine.detect(frame) if min(f.box[2], f.box[3]) >= min_px]
+            faces = [f for f in engine.detect(frame) if min(f.box[2], f.box[3]) >= s.min_px]
             for f in faces:
-                f.name, f.similarity = db.identify(engine.embed(frame, f))
+                f.name, f.similarity = s.db.identify(engine.embed(frame, f))
 
             for cmd in brain.step(t0, [f.name for f in faces]):
                 if cmd == "arrived":
-                    log.log("arrived", ", ".join(f.name for f in faces if f.name in owners))
+                    log.log("arrived", ", ".join(f.name for f in faces if f.name in s.owners))
                 elif cmd == "launch":
                     log.log("launched")
-                    launch_workspace(cfg.get("on_arrival", {}) or {})
+                    launch_workspace(s.cfg.get("on_arrival", {}) or {})
                 elif cmd == "left":
                     log.log("left")
                 elif cmd == "lock":
-                    lock_screen()
-                    log.log("locked", "sahib getdi")
-                    if tg_cfg.get("notify_on_lock"):
-                        tg.send_text(f"🔒 Ekran kilidləndi ({datetime.now():%H:%M})")
+                    if s.pres.get("lock_enabled", True):
+                        lock_screen()
+                        log.log("locked", "sahib getdi")
+                        if s.tg_cfg.get("notify_on_lock"):
+                            s.tg.send_text(f"🔒 Ekran kilidləndi ({datetime.now():%H:%M})")
                 elif cmd == "stranger":
-                    handle_stranger(frame, faces, intr, brain, tg, log)
+                    handle_stranger(frame, faces, s.intr, brain, s.tg, log)
 
             if preview:
                 now = time.monotonic()
                 fps = 0.9 * fps + 0.1 * (1.0 / max(1e-3, now - t_prev))
                 t_prev = now
                 view = frame.copy()
-                draw(view, faces, owners, brain, fps)
+                draw(view, faces, s.owners, brain, fps)
                 cv2.imshow("Smart Desk", view)
                 if cv2.waitKey(1) & 0xFF in (ord("q"), 27):
                     break
-            time.sleep(max(0.0, period - (time.monotonic() - t0)))
+            time.sleep(max(0.0, s.period - (time.monotonic() - t0)))
     except KeyboardInterrupt:
         pass
     finally:
@@ -287,7 +345,15 @@ def main():
     elif args.telegram_setup:
         telegram_setup(cfg)
     else:
-        run(cfg, args.preview)
+        pid = service.running_pid()
+        if pid and pid != os.getpid():
+            raise SystemExit(f"Smart Desk artıq işləyir (PID {pid}). Əvvəlcə onu dayandır "
+                             "(ayarlar tətbiqində 'Dayandır' və ya Task Manager → pythonw.exe).")
+        service.write_pid()
+        try:
+            run(args.config, args.preview)
+        finally:
+            service.clear_pid()
 
 
 if __name__ == "__main__":
